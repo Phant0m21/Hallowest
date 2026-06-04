@@ -11,8 +11,6 @@ namespace Hallowest
         internal static Hallowest Instance;
         public override string GetVersion() => "1.0.3";
 
-        private int lastGeo = -1;
-
         public override void Initialize()
         {
             Instance = this;
@@ -30,22 +28,7 @@ namespace Hallowest
             if (PlayerData.instance == null)
                 return;
 
-            int current = PlayerData.instance.geo;
-
-            if (lastGeo == -1)
-            {
-                lastGeo = current;
-                return;
-            }
-
-            if (current > lastGeo)
-            {
-                int diff = current - lastGeo;
-
-                PlayerData.instance.geo += diff;
-            }
-
-            lastGeo = PlayerData.instance.geo;
+            ApplyCharmCosts();
         }
 
         private void OnSaveLoaded(SaveGameData data)
@@ -53,6 +36,11 @@ namespace Hallowest
             if (PlayerData.instance == null)
                 return;
 
+            ApplyCharmCosts();
+        }
+
+        private void ApplyCharmCosts()
+        {
             PlayerData.instance.SetInt("charmCost_1", 0);
             PlayerData.instance.SetInt("charmCost_2", 0);
             PlayerData.instance.SetInt("charmCost_37", 0);
@@ -62,17 +50,21 @@ namespace Hallowest
             PlayerData.instance.SetInt("charmCost_21", 3);
             PlayerData.instance.SetInt("charmCost_34", 3);
             PlayerData.instance.SetInt("charmCost_28", 1);
+            PlayerData.instance.SetInt("charmCost_5", 1);
+            PlayerData.instance.SetInt("charmCost_31", 1);
+
         }
 
         private bool OnEnableEnemy(GameObject enemy, bool isAlreadyDead)
         {
-            if (isAlreadyDead) return isAlreadyDead;
+            if (isAlreadyDead)
+                return isAlreadyDead;
 
             HealthManager hpManager = enemy.GetComponent<HealthManager>();
 
             if (hpManager != null)
             {
-                hpManager.hp = (int)Math.Round(hpManager.hp * 1.3f);
+                hpManager.hp = (int)Math.Round(hpManager.hp * 1.1f);
 
                 foreach (var fsm in enemy.GetComponents<PlayMakerFSM>())
                 {
@@ -94,7 +86,7 @@ namespace Hallowest
                     foreach (var fsmFloat in fsm.FsmVariables.FloatVariables)
                     {
                         if (fsmFloat.Name.Contains("Speed"))
-                            fsmFloat.Value *= 1.5f;
+                            fsmFloat.Value *= 1.4f;
                     }
                 }
             }
