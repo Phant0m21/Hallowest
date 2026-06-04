@@ -73,6 +73,7 @@
   <ItemGroup>
     <Compile Include="FalseKnightMod.cs" />
     <Compile Include="Hallowest.cs" />
+    <Compile Include="PrimalAspidOverhaul.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
