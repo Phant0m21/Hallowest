@@ -9,16 +9,59 @@ namespace Hallowest
     public class Hallowest : Mod
     {
         internal static Hallowest Instance;
-        public override string GetVersion() => "1.0.2";
+        public override string GetVersion() => "1.0.3";
+
+        private int lastGeo = -1;
 
         public override void Initialize()
         {
             Instance = this;
 
             ModHooks.OnEnableEnemyHook += OnEnableEnemy;
+            ModHooks.AfterSavegameLoadHook += OnSaveLoaded;
+            ModHooks.HeroUpdateHook += OnHeroUpdate;
 
             FalseKnightMod.HookFalseKnight();
             PrimalAspidOverhaul.Initialize();
+        }
+
+        private void OnHeroUpdate()
+        {
+            if (PlayerData.instance == null)
+                return;
+
+            int current = PlayerData.instance.geo;
+
+            if (lastGeo == -1)
+            {
+                lastGeo = current;
+                return;
+            }
+
+            if (current > lastGeo)
+            {
+                int diff = current - lastGeo;
+
+                PlayerData.instance.geo += diff;
+            }
+
+            lastGeo = PlayerData.instance.geo;
+        }
+
+        private void OnSaveLoaded(SaveGameData data)
+        {
+            if (PlayerData.instance == null)
+                return;
+
+            PlayerData.instance.SetInt("charmCost_1", 0);
+            PlayerData.instance.SetInt("charmCost_2", 0);
+            PlayerData.instance.SetInt("charmCost_37", 0);
+            PlayerData.instance.SetInt("charmCost_40", 1);
+            PlayerData.instance.SetInt("charmCost_29", 3);
+            PlayerData.instance.SetInt("charmCost_6", 1);
+            PlayerData.instance.SetInt("charmCost_21", 3);
+            PlayerData.instance.SetInt("charmCost_34", 3);
+            PlayerData.instance.SetInt("charmCost_28", 1);
         }
 
         private bool OnEnableEnemy(GameObject enemy, bool isAlreadyDead)
