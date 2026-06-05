@@ -69,10 +69,14 @@
       <SpecificVersion>False</SpecificVersion>
       <HintPath>..\..\..\..\..\..\Program Files (x86)\Steam\steamapps\common\Hollow Knight\hollow_knight_Data\Managed\UnityEngine.UIModule.dll</HintPath>
     </Reference>
+    <Reference Include="Vasi">
+      <HintPath>..\..\..\..\..\..\Program Files (x86)\Steam\steamapps\common\Hollow Knight\hollow_knight_Data\Managed\Mods\Vasi\Vasi.dll</HintPath>
+    </Reference>
   </ItemGroup>
   <ItemGroup>
     <Compile Include="FalseKnightMod.cs" />
     <Compile Include="Hallowest.cs" />
+    <Compile Include="PantheonEditor.cs" />
     <Compile Include="PrimalAspidOverhaul.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>

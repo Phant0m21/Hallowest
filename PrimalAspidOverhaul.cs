@@ -10,7 +10,6 @@ namespace Hallowest
     {
         private const float SpeedMultiplier = 8.0f;
         private const float ShootSpeedMultiplier = 0.04f;
-        private const int Damage = 2;
 
         public static void Initialize()
         {
@@ -33,7 +32,6 @@ namespace Hallowest
 
         private static void BoostAspid(GameObject enemy)
         {
-
             foreach (var fsm in enemy.GetComponents<PlayMakerFSM>())
             {
                 foreach (var state in fsm.FsmStates)
@@ -84,7 +82,6 @@ namespace Hallowest
 
                 if (dmg != null)
                 {
-                    dmg.damageDealt = Damage * 2;
                 }
             }
 

@@ -79,3 +79,5 @@ C:\Users\danie\source\repos\Hallowest\Hallowest\bin\Debug\Satchel.dll
 C:\Users\danie\source\repos\Hallowest\Hallowest\bin\Debug\Satchel.pdb
 C:\Users\danie\source\repos\Hallowest\Hallowest\bin\Debug\Satchel.xml
 C:\Users\danie\source\repos\Hallowest\Hallowest\bin\Debug\MMHOOK_PlayMaker.dll
+C:\Users\danie\source\repos\Hallowest\Hallowest\bin\Debug\Vasi.dll
+C:\Users\danie\source\repos\Hallowest\Hallowest\bin\Debug\Vasi.pdb
