@@ -10,7 +10,7 @@ namespace Hallowest
     public class Hallowest : Mod
     {
         internal static Hallowest Instance;
-        public override string GetVersion() => "1.0.4";
+        public override string GetVersion() => "1.0.5";
 
         public override void Initialize()
         {
@@ -19,6 +19,7 @@ namespace Hallowest
             FalseKnightMod.HookFalseKnight();
             PrimalAspidOverhaul.Initialize();
             PantheonEditor.Initialize();
+            PureVesselOverhaul.Initialize();
 
             ModHooks.OnEnableEnemyHook += OnEnableEnemy;
             ModHooks.AfterSavegameLoadHook += OnSaveLoaded;
