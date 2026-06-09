@@ -6,6 +6,10 @@ namespace Hallowest
 {
     public class PantheonEditor : MonoBehaviour
     {
+        private static bool inGodhome = false;
+        private static bool inPantheon5Run = false;
+        private static int index = -1;
+
         private static readonly List<string> VanillaP5Order = new List<string>()
         {
             "GG_Vengefly_V",
@@ -106,25 +110,69 @@ namespace Hallowest
 
         private static string OnBeforeSceneLoad(string sceneName)
         {
-            Modding.Logger.Log("[Hallowest] Scene load: " + sceneName);
+            Log("Scene load: " + sceneName);
 
-            int index = VanillaP5Order.IndexOf(sceneName);
-
-            if (index >= 0 && index < MyBossList.Count)
+            // 1) вход в Godhome
+            if (sceneName == "GG_Atrium_Roof")
             {
-                string replacement = MyBossList[index];
+                inGodhome = true;
+                inPantheon5Run = false;
+                index = -1;
 
-                Modding.Logger.Log(
-                    "[Hallowest] P5 Replace: " +
-                    sceneName +
-                    " -> " +
-                    replacement
-                );
+                Log("Entered Godhome");
+                return sceneName;
+            }
 
-                return replacement;
+            // 2) выход из Godhome
+            if (sceneName == "GG_Workshop")
+            {
+                inGodhome = false;
+                inPantheon5Run = false;
+                index = -1;
+
+                Log("Exited Godhome");
+                return sceneName;
+            }
+
+            // ❗ важно: работаем ТОЛЬКО внутри Godhome
+            if (!inGodhome)
+                return sceneName;
+
+            // 3) старт P5 определяется только первым боссом
+            if (!inPantheon5Run && sceneName == "GG_Vengefly_V")
+            {
+                inPantheon5Run = true;
+                index = 0;
+
+                Log("P5 RUN STARTED");
+            }
+
+            if (!inPantheon5Run)
+                return sceneName;
+
+            // 4) только последовательность P5
+            int i = VanillaP5Order.IndexOf(sceneName);
+
+            if (i >= 0)
+            {
+                index = i;
+
+                if (i < MyBossList.Count)
+                {
+                    string replacement = MyBossList[i];
+
+                    Log($"P5 REPLACE: {sceneName} -> {replacement}");
+
+                    return replacement;
+                }
             }
 
             return sceneName;
+        }
+
+        private static void Log(string msg)
+        {
+            Modding.Logger.Log("[Hallowest][P5] " + msg);
         }
     }
 }

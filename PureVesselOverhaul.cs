@@ -1,263 +1,164 @@
-﻿using System;
-using System.Collections;
-using HutongGames.PlayMaker;
+﻿using HutongGames.PlayMaker;
 using HutongGames.PlayMaker.Actions;
+using Modding;
+using System;
 using UnityEngine;
 using Vasi;
-using Object = UnityEngine.Object;
-using Modding;
 
 namespace Hallowest
 {
-    public class PureVesselOverhaul
+    public static class PureVesselOverhaul
     {
-        private static System.Random rand = new System.Random();
-        private static bool initialized;
-
-        public static void Initialize()
+        public static void Hook()
         {
-            if (initialized) return;
-            initialized = true;
-
-            ModHooks.OnEnableEnemyHook += OnEnemySpawned;
+            On.PlayMakerFSM.OnEnable += OnFsmEnable;
         }
 
-        private static bool OnEnemySpawned(GameObject enemy, bool isAlreadyDead)
+        private static void OnFsmEnable(On.PlayMakerFSM.orig_OnEnable orig, PlayMakerFSM self)
         {
-            if (enemy == null) return isAlreadyDead;
+            orig(self);
 
-            if (!enemy.name.Contains("Pure Vessel"))
-                return isAlreadyDead;
+            if (self == null || self.gameObject == null)
+                return;
 
-            Apply(enemy);
+            if (self.gameObject.name != "HK Prime" && self.gameObject.name != "Pure Vessel")
+                return;
 
-            ModHooks.OnEnableEnemyHook -= OnEnemySpawned;
+            if (self.FsmName != "Control" && self.FsmName != "HK Prime Control")
+                return;
 
-            return isAlreadyDead;
+            Apply(self);
         }
 
-        private static void Apply(GameObject boss)
+        private static void Apply(PlayMakerFSM fsm)
         {
-            PlayMakerFSM control = boss.LocateMyFSM("Control");
-            if (control == null) return;
+            Log("Pure Vessel attack logic overhaul applied");
 
-            AddAttacks(boss, control);
-            AddHKPrimeStyleLogic(boss, control); // 💀 ДОБАВЛЕНА СЛОЖНАЯ FSM ЛОГИКА
-
-            Log("Pure Vessel patched (lazy init + HK Prime logic)");
+            DesyncAttackTiming(fsm);
+            FakeOutAttacks(fsm);
+            AdaptiveComboShifts(fsm);
+            ParryPunishBehavior(fsm);
         }
 
-        // =========================
-        // ТВОИ АТАКИ (НЕ ТРОГАЛ)
-        // =========================
-        private static void AddAttacks(GameObject boss, PlayMakerFSM control)
+        private static void DesyncAttackTiming(PlayMakerFSM fsm)
         {
-            AddVoidRain(boss, control);
-            AddSpinBurst(boss, control);
-            AddTeleportSlam(boss, control);
-
-            Log("Pure Vessel patched (Hallowest style)");
-        }
-
-        private static void AddVoidRain(GameObject boss, PlayMakerFSM control)
-        {
-            IEnumerator Attack()
+            string[] states =
             {
-                var anim = boss.GetComponent<tk2dSpriteAnimator>();
-                anim.Play("Focus Charge");
+                "Slash Antic",
+                "Dash Slash Antic",
+                "Focus Antic",
+                "Uppercut Antic",
+                "Lunge Antic"
+            };
 
-                yield return new WaitForSeconds(0.6f);
+            foreach (var stateName in states)
+            {
+                var state = fsm.Fsm.GetState(stateName);
+                if (state == null) continue;
 
-                for (int i = 0; i < 20; i++)
+                foreach (var a in state.Actions)
                 {
-                    float x = HeroController.instance.transform.position.x +
-                              UnityEngine.Random.Range(-9f, 9f);
+                    if (a is Wait w)
+                        w.time.Value *= UnityEngine.Random.Range(0.35f, 0.9f);
 
-                    float y = HeroController.instance.transform.position.y + 12f;
-
-                    GameObject proj = Object.Instantiate(
-                        GetBlackShot(control),
-                        new Vector3(x, y, 0),
-                        Quaternion.identity
-                    );
-
-                    proj.GetComponent<Rigidbody2D>().velocity = Vector2.down * 18f;
-
-                    yield return new WaitForSeconds(0.05f);
+                    if (a is WaitRandom wr)
+                    {
+                        wr.timeMin.Value *= 0.4f;
+                        wr.timeMax.Value *= 0.85f;
+                    }
                 }
             }
-
-            Inject(control, "Void Rain", Attack);
         }
 
-        private static void AddSpinBurst(GameObject boss, PlayMakerFSM control)
+        private static void FakeOutAttacks(PlayMakerFSM fsm)
         {
-            IEnumerator Attack()
+            string[] attackStates =
             {
-                var anim = boss.GetComponent<tk2dSpriteAnimator>();
-                anim.Play("Slash1 Antic");
+                "Slash",
+                "Dash Slash",
+                "Uppercut",
+                "Lunge"
+            };
 
-                yield return new WaitForSeconds(0.25f);
+            foreach (var stateName in attackStates)
+            {
+                var state = fsm.Fsm.GetState(stateName);
+                if (state == null) continue;
 
-                int count = 16;
-
-                for (int i = 0; i < count; i++)
+                state.InsertMethod(0, () =>
                 {
-                    float angle = i * (360f / count);
+                    if (UnityEngine.Random.value < 0.4f)
+                    {
+                        fsm.SendEvent("FINISHED");
+                        return;
+                    }
 
-                    Vector2 dir = new Vector2(
-                        Mathf.Cos(angle * Mathf.Deg2Rad),
-                        Mathf.Sin(angle * Mathf.Deg2Rad)
-                    );
+                    if (UnityEngine.Random.value < 0.3f)
+                    {
+                        fsm.SendEvent("ATTACK FAST");
+                    }
+                });
+            }
+        }
 
-                    GameObject proj = Object.Instantiate(
-                        GetSilentShot(control),
-                        boss.transform.position,
-                        Quaternion.identity
-                    );
+        private static void AdaptiveComboShifts(PlayMakerFSM fsm)
+        {
+            var comboVar = fsm.FsmVariables.FindFsmInt("Combo Count");
 
-                    proj.GetComponent<Rigidbody2D>().velocity = dir * 24f;
-                }
-
-                yield return new WaitForSeconds(0.3f);
+            if (comboVar != null)
+            {
+                comboVar.Value = Mathf.Clamp(comboVar.Value + 1, 0, 10);
             }
 
-            Inject(control, "Shadow Spin", Attack);
-        }
+            var randState = fsm.FsmVariables.FindFsmInt("Random Attack");
 
-        private static void AddTeleportSlam(GameObject boss, PlayMakerFSM control)
-        {
-            IEnumerator Attack()
+            if (randState != null)
             {
-                var anim = boss.GetComponent<tk2dSpriteAnimator>();
-
-                anim.Play("Tele Out");
-                yield return new WaitForSeconds(0.2f);
-
-                Vector3 hero = HeroController.instance.transform.position;
-
-                boss.transform.position = hero + new Vector3(0, 8f, 0);
-
-                yield return new WaitForSeconds(0.15f);
-
-                GameObject slam = Object.Instantiate(
-                    GetBlackShot(control),
-                    boss.transform.position,
-                    Quaternion.identity
-                );
-
-                slam.GetComponent<Rigidbody2D>().velocity = Vector2.down * 35f;
-
-                anim.Play("Fall");
-
-                yield return new WaitForSeconds(0.5f);
+                randState.Value = UnityEngine.Random.Range(0, 3);
             }
-
-            Inject(control, "Teleport Slam", Attack);
         }
 
-        // =========================
-        // 💀 HK PRIME STYLE FSM LOGIC
-        // =========================
-        private static void AddHKPrimeStyleLogic(GameObject boss, PlayMakerFSM control)
+        // =====================================================
+        // 4. PUNISH PLAYER BEHAVIOR
+        // (реакция на агрессию игрока — без новых механик)
+        // =====================================================
+        private static void ParryPunishBehavior(PlayMakerFSM fsm)
         {
-            // =========================
-            // 1. REMOVE IDLE TIME (как HK Prime)
-            // =========================
-            control.FsmVariables.FindFsmFloat("Idle Time").Value = 0;
-            control.FsmVariables.FindFsmFloat("Idle Time Min").Value = 0;
-            control.FsmVariables.FindFsmFloat("Idle Time Max").Value = 0;
-
-            // =========================
-            // 2. УСИЛЕНИЕ CHOICE P3 (не равный random)
-            // =========================
-            var choice = control.GetState("Choice P3");
-            var rnd = choice.GetAction<SendRandomEventV3>();
-
-            rnd.eventMax = new FsmInt[3] { 3, 2, 1 };
-            rnd.missedMax = new FsmInt[3] { 5, 5, 5 };
-
-            // =========================
-            // 3. VOID RAIN CONDITIONAL SPEED (InsertMethod)
-            // =========================
-            control.GetState("Void Rain").InsertMethod(0, () =>
+            string[] punishStates =
             {
-                float dist = Vector2.Distance(
-                    HeroController.instance.transform.position,
-                    boss.transform.position
-                );
+                "Focus",
+                "Heal",
+                "Recover"
+            };
 
-                if (dist > 8f)
+            foreach (var stateName in punishStates)
+            {
+                var state = fsm.Fsm.GetState(stateName);
+                if (state == null) continue;
+
+                state.InsertMethod(0, () =>
                 {
-                    // дальний бой → быстрее давление
-                    Time.timeScale = 1.05f;
-                }
-            });
 
-            // =========================
-            // 4. AFTER ATTACK BRANCH (как After Slash2)
-            // =========================
-            control.CreateState("After Spin Burst");
-
-            control.GetState("Shadow Spin").AddTransition(FsmEvent.Finished, "After Spin Burst");
-
-            control.GetState("After Spin Burst").AddMethod(() =>
-            {
-                float r = UnityEngine.Random.value;
-
-                if (r < 0.4f)
-                    control.SetState("Void Rain");
-                else if (r < 0.7f)
-                    control.SetState("Teleport Slam");
-                else
-                    control.SetState("Idle Stance");
-            });
-
-            // =========================
-            // 5. TELEPORT SLAM IMPROVEMENT (HK Prime style DSTAB logic)
-            // =========================
-            control.GetState("Teleport Slam").InsertMethod(0, () =>
-            {
-                Vector3 hero = HeroController.instance.transform.position;
-
-                // более агрессивный snap-teleport
-                boss.transform.position = hero + new Vector3(
-                    UnityEngine.Random.Range(-1.5f, 1.5f),
-                    8f,
-                    0
-                );
-            });
+                    if (PlayerClose(fsm, 4f))
+                    {
+                        fsm.SendEvent("CANCEL");
+                    }
+                });
+            }
         }
 
-        // =========================
-        // FSM HELPERS
-        // =========================
-        private static void Inject(PlayMakerFSM control, string name, Func<IEnumerator> logic)
+        private static bool PlayerClose(PlayMakerFSM fsm, float dist)
         {
-            FsmState state = control.CreateState(name);
+            var hero = HeroController.instance;
+            if (hero == null) return false;
 
-            state.InsertCoroutine(0, logic);
-            state.AddTransition(FsmEvent.Finished, "Idle Stance");
-
-            control.GetAction<SendRandomEventV3>("Choice P3")
-                .AddToSendRandomEventV3(name, 0.25f, 1, 5);
+            return Vector2.Distance(hero.transform.position, fsm.transform.position) < dist;
         }
 
-        private static GameObject GetBlackShot(PlayMakerFSM control)
-        {
-            return control.GetAction<FlingObjectsFromGlobalPoolTime>("SmallShot LowHigh")
-                .gameObject.Value;
-        }
-
-        private static GameObject GetSilentShot(PlayMakerFSM control)
-        {
-            return control.GetAction<FlingObjectsFromGlobalPoolTime>("SmallShot LowHigh")
-                .gameObject.Value;
-        }
-
+        // LOG
         private static void Log(string msg)
         {
-            Debug.Log("[Hallowest] " + msg);
+            Modding.Logger.Log("[Hallowest][PV] " + msg);
         }
     }
 }
